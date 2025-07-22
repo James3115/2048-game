@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>2048 Neon</title>
+<style>
+  :root{
+    --bg:#111;
+    --tile:#222;
+    --radius:16px;
+    --font:"Segoe UI",Arial,Helvetica,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    height:100vh;
+    background:#000;
+    color:#fff;
+    font-family:var(--font);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    overflow:hidden;
+  }
+  /* 粒子背景 */
+  #particles{
+    position:fixed;top:0;left:0;width:100%;height:100%;z-index:-1;
+  }
+  /* 主容器 */
+  #wrap{
+    text-align:center;
+    width:100%;
+    max-width:420px;
+    padding:20px;
+    position:relative;
+    z-index:1;
+  }
+  /* 霓虹标题 */
+  h1{
+    font-size:72px;
+    font-weight:900;
+    background:linear-gradient(45deg,#00f5ff,#ff00ff,#00f5ff);
+    background-size:200% 200%;
+    -webkit-background-clip:text;
+    -webkit-text-fill-color:transparent;
+    animation:neon 3s ease-in-out infinite;
+    margin-bottom:20px;
+  }
+  @keyframes neon{
+    0%{background-position:0% 50%}
+    50%{background-position:100% 50%}
+    100%{background-position:0% 50%}
+  }
+  /* 记分器 */
+  #score-wrap{
+    display:flex;
+    justify-content:center;
+    margin-bottom:25px;
+  }
+  #score{
+    padding:12px 30px;
+    font-size:28px;
+    font-weight:700;
+    background:rgba(255,255,255,.1);
+    backdrop-filter:blur(10px);
+    border-radius:var(--radius);
+    box-shadow:0 0 12px rgba(255,255,255,.2);
+  }
+  /* 棋盘 */
+  #board{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:12px;
+    padding:12px;
+    background:rgba(255,255,255,.08);
+    border-radius:var(--radius);
+    box-shadow:0 8px 30px rgba(0,0,0,.5);
+  }
+  .tile{
+    aspect-ratio:1;
+    border-radius:var(--radius);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:32px;
+    font-weight:700;
+    transition:transform .15s,background .15s;
+    box-shadow:0 4px 8px rgba(0,0,0,.35);
+  }
+  /* 数字颜色 */
+  .tile-0{background:transparent}
+  .tile-2{background:#eee4da;color:#776e65}
+  .tile-4{background:#ede0c8;color:#776e65}
+  .tile-8{background:#f2b179;color:#fff}
+  .tile-16{background:#f59563;color:#fff}
+  .tile-32{background:#f67c5f;color:#fff}
+  .tile-64{background:#f65e3b;color:#fff}
+  .tile-128,.tile-256,.tile-512{background:#edcf72;color:#fff;font-size:26px}
+  .tile-1024,.tile-2048{background:#edc53f;color:#fff;font-size:22px}
+
+  /* 重启按钮 */
+  #restart{
+    margin-top:25px;
+    padding:12px 40px;
+    font-size:20px;
+    font-weight:700;
+    border:none;
+    border-radius:var(--radius);
+    background:linear-gradient(45deg,#00f5ff,#ff00ff);
+    color:#000;
+    cursor:pointer;
+    transition:transform .2s;
+  }
+  #restart:hover{transform:scale(1.05)}
+  /* 响应式 */
+  @media(max-width:500px){
+    h1{font-size:56px}
+    .tile{font-size:24px}
+  }
+</style>
+</head>
+<body>
+<canvas id="particles"></canvas>
+
+<div id="wrap">
+  <h1>2048</h1>
+  <div id="score-wrap"><div id="score">0</div></div>
+  <div id="board"></div>
+  <button id="restart">Restart</button>
+</div>
+
+<script>
+/* ===== 粒子背景 ===== */
+const cvs=document.getElementById('particles'),ctx=cvs.getContext('2d');
+let W,H,particles=[];
+function resize(){ W=cvs.width=innerWidth; H=cvs.height=innerHeight; }
+window.addEventListener('resize',resize); resize();
+class P{ constructor(){ this.x=Math.random()*W; this.y=Math.random()*H; this.vx=(Math.random()-0.5)*0.5; this.vy=(Math.random()-0.5)*0.5; this.r=Math.random()*2; } update(){ this.x+=this.vx; this.y+=this.vy; if(this.x<0||this.x>W) this.vx*=-1; if(this.y<0||this.y>H) this.vy*=-1; } draw(){ ctx.beginPath(); ctx.arc(this.x,this.y,this.r,0,Math.PI*2); ctx.fillStyle='rgba(255,255,255,0.3)'; ctx.fill(); } }
+for(let i=0;i<100;i++) particles.push(new P());
+function animate(){ ctx.clearRect(0,0,W,H); particles.forEach(p=>{ p.update(); p.draw(); }); requestAnimationFrame(animate); } animate();
+
+/* ===== 游戏逻辑 ===== */
+const SIZE=4,bEl=document.getElementById('board'),sEl=document.getElementById('score'),rBtn=document.getElementById('restart');
+let board,score;
+function init(){ board=Array.from({length:SIZE},()=>Array(SIZE).fill(0)); score=0; addTile(); addTile(); draw(); }
+function addTile(){ const e=[]; board.forEach((r,i)=>r.forEach((v,j)=>!v&&e.push([i,j]))); if(e.length){ const[i,j]=e[Math.floor(Math.random()*e.length)]; board[i][j]=Math.random()<0.9?2:4; } }
+function draw(){ bEl.innerHTML=''; board.flat().forEach(v=>{ const t=document.createElement('div'); t.className=`tile tile-${v}`; t.textContent=v||''; bEl.appendChild(t); }); sEl.textContent=score; }
+function move(dir){ const vec={left:[0,-1],right:[0,1],up:[-1,0],down:[1,0]}; const [dx,dy]=vec[dir]; let moved=false; const order=[]; for(let r=0;r<SIZE;r++)for(let c=0;c<SIZE;c++)order.push(dir==='left'||dir==='up'?{r,c}:{r:SIZE-1-r,c:SIZE-1-c}); for(const {r,c} of order){ if(!board[r][c])continue; let [x,y]=[r,c]; let [nx,ny]=[x+dx,y+dy]; while(nx>=0&&nx<SIZE&&ny>=0&&ny<SIZE){ if(!board[nx][ny]){ board[nx][ny]=board[x][y]; board[x][y]=0; [x,y]=[nx,ny]; moved=true; }else if(board[nx][ny]===board[x][y]){ board[nx][ny]*=2; score+=board[nx][ny]; board[x][y]=0; moved=true; break; }else break; [nx,ny]=[x+dx,y+dy]; } } if(moved){ addTile(); draw(); if([].concat(...board).every(v=>v)&&!hasMerge()) alert('Game Over!'); } }
+function hasMerge(){ for(let r=0;r<SIZE;r++)for(let c=0;c<SIZE;c++){ if(c<SIZE-1&&board[r][c]===board[r][c+1])return true; if(r<SIZE-1&&board[r][c]===board[r+1][c])return true; } return false; }
+document.addEventListener('keydown',e=>{ const key={ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right'}[e.key]; if(key){ e.preventDefault(); move(key); } });
+let startX,startY; bEl.addEventListener('touchstart',e=>{[startX,startY]=[e.touches[0].clientX,e.touches[0].clientY];}); bEl.addEventListener('touchend',e=>{ const dx=e.changedTouches[0].clientX-startX,dy=e.changedTouches[0].clientY-startY; if(Math.abs(dx)>Math.abs(dy)) move(dx>0?'right':'left'); else move(dy>0?'down':'up'); });
+rBtn.addEventListener('click',init);
+init();
+</script>
+</body>
+</html>
